@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #282c34;
+            color: white;
+        }
+        #root {
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid white;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function SnakeGame() {
+            const [gameState, setGameState] = useState(null);
+            const [playerId, setPlayerId] = useState(null);
+            const [direction, setDirection] = useState('');
+            const [score, setScore] = useState(0);
+            const [ws, setWs] = useState(null);
+
+            useEffect(() => {
+                const playerId = `player-${Math.random().toString(36).substr(2, 9)}`;
+                setPlayerId(playerId);
+
+                const websocket = new WebSocket(`ws://localhost:8000/ws/${playerId}`);
+                setWs(websocket);
+
+                websocket.onmessage = (event) => {
+                    const state = JSON.parse(event.data);
+                    setGameState(state);
+                };
+
+                return () => websocket.close();
+            }, []);
+
+            useEffect(() => {
+                if (ws && direction) {
+                    ws.send(JSON.stringify({ direction }));
+                }
+            }, [direction]);
+
+            const handleKeyDown = (event) => {
+                switch (event.key) {
+                    case 'ArrowUp':
+                        setDirection('up');
+                        break;
+                    case 'ArrowDown':
+                        setDirection('down');
+                        break;
+                    case 'ArrowLeft':
+                        setDirection('left');
+                        break;
+                    case 'ArrowRight':
+                        setDirection('right');
+                        break;
+                    default:
+                        break;
+                }
+            };
+
+            useEffect(() => {
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
+
+            return (
+                <div>
+                    <h1>Snake Game</h1>
+                    {gameState ? (
+                        <div>
+                            <p>Score: {score}</p>
+                            <canvas id="gameCanvas" width="400" height="400"></canvas>
+                        </div>
+                    ) : (
+                        <p>Loading...</p>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<SnakeGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>
