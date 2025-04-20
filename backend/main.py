@@ -14,7 +14,7 @@ app = FastAPI()
 # Game state
 class SnakeGame:
     def __init__(self):
-        self.board_size = (20, 20)  # Initialize board_size first
+        self.board_size = (36, 20)  # 16:9 ratio with height of 20 cells
         self.players = {}
         self.scores = {}
         self.food = self.generate_food()
