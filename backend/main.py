@@ -18,6 +18,7 @@ class SnakeGame:
         self.players = {}
         self.scores = {}
         self.food = self.generate_food()
+        self.game_over = {}
 
     def generate_food(self):
         return (random.randint(0, self.board_size[0] - 1),
@@ -26,12 +27,24 @@ class SnakeGame:
     def add_player(self, player_id):
         self.players[player_id] = [(0, 0)]
         self.scores[player_id] = 0
+        self.game_over[player_id] = False
 
     def check_food_collision(self, head):
         return head == self.food
 
+    def check_self_collision(self, player_id, new_head):
+        # Check if the new head position collides with any part of the snake's body
+        # Skip the last segment since it will move out of the way
+        snake_body = self.players[player_id][:-1]
+        return new_head in snake_body
+
+    def reset_player(self, player_id):
+        self.players[player_id] = [(0, 0)]
+        self.scores[player_id] = 0
+        self.game_over[player_id] = False
+
     def move_player(self, player_id, direction):
-        if player_id not in self.players:
+        if player_id not in self.players or self.game_over.get(player_id, False):
             return
 
         head = self.players[player_id][0]
@@ -44,6 +57,11 @@ class SnakeGame:
         elif direction == "right":
             new_head = ((head[0] + 1) % self.board_size[0], head[1])
         else:
+            return
+
+        # Check for self collision
+        if self.check_self_collision(player_id, new_head):
+            self.game_over[player_id] = True
             return
 
         # Check if snake ate food
@@ -63,7 +81,8 @@ class SnakeGame:
             "players": self.players,
             "food": self.food,
             "board_size": self.board_size,
-            "scores": self.scores
+            "scores": self.scores,
+            "game_over": self.game_over
         }
 
 # Initialize game
@@ -94,3 +113,4 @@ async def websocket_endpoint(websocket: WebSocket, player_id: str):
         logger.info(f"Player {player_id} disconnected.")
         del game.players[player_id]
         del game.scores[player_id]
+        del game.game_over[player_id]

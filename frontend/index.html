@@ -142,9 +142,33 @@
                     if (state.scores && state.scores[playerId]) {
                         setScore(state.scores[playerId]);
                     }
+                    if (state.game_over && state.game_over[playerId]) {
+                        setGameOver(true);
+                        if (moveIntervalRef.current) {
+                            clearInterval(moveIntervalRef.current);
+                        }
+                    }
                     setInterpolation(0);
                     renderGame(state);
                 };
+
+                // Handle websocket closure
+                websocket.onclose = () => {
+                    if (moveIntervalRef.current) {
+                        clearInterval(moveIntervalRef.current);
+                    }
+                };
+
+                return () => {
+                    websocket.close();
+                };
+            };
+
+            const restartGame = () => {
+                if (ws) {
+                    ws.close();
+                }
+                startNewGame();
             };
 
             const drawGrid = (ctx, width, height) => {
@@ -351,7 +375,7 @@
                                 <div className="game-over">
                                     <h2>Game Over!</h2>
                                     <p>Final Score: {score}</p>
-                                    <button onClick={startNewGame}>Play Again</button>
+                                    <button onClick={restartGame}>Play Again</button>
                                 </div>
                             )}
                         </React.Fragment>
