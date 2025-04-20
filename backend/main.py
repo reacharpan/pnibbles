@@ -1,15 +1,18 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-import asyncio
 import json
 import logging
 import random
+from db import init_db, save_score, get_top_scores
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SnakeGame")
 
 app = FastAPI()
+
+# Initialize database on startup
+init_db()
 
 # Game state
 class SnakeGame:
@@ -19,15 +22,17 @@ class SnakeGame:
         self.scores = {}
         self.food = self.generate_food()
         self.game_over = {}
+        self.player_names = {}  # Store player names
 
     def generate_food(self):
         return (random.randint(0, self.board_size[0] - 1),
                 random.randint(0, self.board_size[1] - 1))
 
-    def add_player(self, player_id):
+    def add_player(self, player_id, player_name):
         self.players[player_id] = [(0, 0)]
         self.scores[player_id] = 0
         self.game_over[player_id] = False
+        self.player_names[player_id] = player_name
 
     def check_food_collision(self, head):
         return head == self.food
@@ -92,25 +97,51 @@ game = SnakeGame()
 async def get():
     return HTMLResponse("<h1>Snake Game Backend</h1>")
 
+@app.get("/top-scores")
+async def get_high_scores():
+    return get_top_scores()
+
 @app.websocket("/ws/{player_id}")
 async def websocket_endpoint(websocket: WebSocket, player_id: str):
-    logger.info(f"Player {player_id} connected.")
     await websocket.accept()
-    game.add_player(player_id)
+    
+    # Wait for player name
     try:
+        data = await websocket.receive_text()
+        player_info = json.loads(data)
+        player_name = player_info.get("player_name", f"Player_{player_id}")
+        
+        # Initialize player
+        game.add_player(player_id, player_name)
+        logger.info(f"Player {player_name} ({player_id}) connected.")
+        
         while True:
             data = await websocket.receive_text()
-            logger.info(f"Received data from player {player_id}: {data}")
             message = json.loads(data)
+            
             if "direction" in message:
                 game.move_player(player_id, message["direction"])
-
-            # Send updated game state to the client
-            state = game.get_state()
-            logger.info(f"Sending game state to player {player_id}: {state}")
-            await websocket.send_text(json.dumps(state))
+                
+                # Check if game just ended
+                if game.game_over.get(player_id, False):
+                    final_score = game.scores[player_id]
+                    is_top_10 = save_score(game.player_names[player_id], final_score)
+                    top_scores = get_top_scores()
+                    
+                    # Send game over message with high score info
+                    await websocket.send_text(json.dumps({
+                        **game.get_state(),
+                        "is_top_10": is_top_10,
+                        "top_scores": top_scores
+                    }))
+                else:
+                    # Send regular game state
+                    await websocket.send_text(json.dumps(game.get_state()))
+                    
     except WebSocketDisconnect:
-        logger.info(f"Player {player_id} disconnected.")
-        del game.players[player_id]
-        del game.scores[player_id]
-        del game.game_over[player_id]
+        logger.info(f"Player {game.player_names.get(player_id, player_id)} disconnected.")
+        if player_id in game.players:
+            del game.players[player_id]
+            del game.scores[player_id]
+            del game.game_over[player_id]
+            del game.player_names[player_id]
