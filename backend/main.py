@@ -29,7 +29,10 @@ class SnakeGame:
                 random.randint(0, self.board_size[1] - 1))
 
     def add_player(self, player_id, player_name):
-        self.players[player_id] = [(0, 0)]
+        # Start snake in the middle of the left side
+        start_x = 5
+        start_y = self.board_size[1] // 2
+        self.players[player_id] = [(start_x, start_y)]
         self.scores[player_id] = 0
         self.game_over[player_id] = False
         self.player_names[player_id] = player_name
@@ -44,7 +47,10 @@ class SnakeGame:
         return new_head in snake_body
 
     def reset_player(self, player_id):
-        self.players[player_id] = [(0, 0)]
+        # Start snake in the middle of the left side
+        start_x = 5
+        start_y = self.board_size[1] // 2
+        self.players[player_id] = [(start_x, start_y)]
         self.scores[player_id] = 0
         self.game_over[player_id] = False
 

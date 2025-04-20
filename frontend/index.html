@@ -38,8 +38,9 @@
             aspect-ratio: 1.8;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-end;
             margin-bottom: 2vh;
+            margin-left: 240px; /* Space for high scores */
         }
         canvas {
             border-radius: 8px;
@@ -82,6 +83,9 @@
             margin: 0 0 10px 0;
             color: #8ab4f8;
             font-size: 32px;
+            align-self: center;
+            width: 100%;
+            text-align: center;
         }
         .game-over {
             position: absolute;
@@ -115,13 +119,15 @@
             left: 20px;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
             border-radius: 8px;
             border: 1px solid rgba(138, 180, 248, 0.3);
             text-align: left;
             font-size: 14px;
-            max-width: 200px;
+            width: 200px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
         }
         .high-scores h3 {
             margin: 0 0 10px 0;
