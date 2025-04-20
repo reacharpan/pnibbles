@@ -115,8 +115,11 @@
 
             useEffect(() => {
                 const animate = () => {
-                    setInterpolation(i => (i + 0.1) % 1);
+                    setInterpolation(i => Math.min((i + 0.15) % 1, 0.99)); // Smoother interpolation
                     frameRef.current = requestAnimationFrame(animate);
+                    if (canvasRef.current && gameState) {
+                        renderGame(gameState);
+                    }
                 };
                 frameRef.current = requestAnimationFrame(animate);
                 return () => cancelAnimationFrame(frameRef.current);
@@ -218,9 +221,6 @@
 
                 // Draw snakes
                 Object.entries(state.players).forEach(([id, segments]) => {
-                    const isCurrentPlayer = id === playerId;
-                    
-                    // Calculate interpolated positions
                     let interpolatedSegments = segments;
                     if (prevGameState && prevGameState.players[id]) {
                         interpolatedSegments = segments.map((segment, i) => {
@@ -232,63 +232,40 @@
                         });
                     }
 
-                    // Draw snake as a continuous body
+                    // Draw snake body
                     ctx.strokeStyle = colors.snakeOutline;
                     ctx.fillStyle = colors.snake;
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = cellSize - 4; // Thicker line for body
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
 
-                    // Draw body path
+                    // Draw body as a continuous path
                     ctx.beginPath();
                     interpolatedSegments.forEach((segment, index) => {
-                        // Handle wrap-around for x coordinate
-                        let x = segment[0];
-                        if (x < 0) x = state.board_size[0] - 1;
-                        if (x >= state.board_size[0]) x = 0;
-                        
-                        // Handle wrap-around for y coordinate
-                        let y = segment[1];
-                        if (y < 0) y = state.board_size[1] - 1;
-                        if (y >= state.board_size[1]) y = 0;
-
+                        let x = ((segment[0] % state.board_size[0]) + state.board_size[0]) % state.board_size[0];
+                        let y = ((segment[1] % state.board_size[1]) + state.board_size[1]) % state.board_size[1];
                         const px = x * cellSize + cellSize/2;
                         const py = y * cellSize + cellSize/2;
 
                         if (index === 0) {
                             ctx.moveTo(px, py);
                         } else {
-                            // Create smooth curves between segments
-                            const prevSegment = interpolatedSegments[index - 1];
-                            let prevX = prevSegment[0];
-                            let prevY = prevSegment[1];
-                            
-                            // Handle wrap-around for previous segment
-                            if (prevX < 0) prevX = state.board_size[0] - 1;
-                            if (prevX >= state.board_size[0]) prevX = 0;
-                            if (prevY < 0) prevY = state.board_size[1] - 1;
-                            if (prevY >= state.board_size[1]) prevY = 0;
-
-                            const cpx = (prevX * cellSize + cellSize/2 + px) / 2;
-                            const cpy = (prevY * cellSize + cellSize/2 + py) / 2;
-                            ctx.quadraticCurveTo(cpx, cpy, px, py);
+                            ctx.lineTo(px, py);
                         }
                     });
                     ctx.stroke();
-                    
+
                     // Draw head
                     const head = interpolatedSegments[0];
-                    let headX = head[0];
-                    let headY = head[1];
-                    
-                    // Handle wrap-around for head
-                    if (headX < 0) headX = state.board_size[0] - 1;
-                    if (headX >= state.board_size[0]) headX = 0;
-                    if (headY < 0) headY = state.board_size[1] - 1;
-                    if (headY >= state.board_size[1]) headY = 0;
-
+                    let headX = ((head[0] % state.board_size[0]) + state.board_size[0]) % state.board_size[0];
+                    let headY = ((head[1] % state.board_size[1]) + state.board_size[1]) % state.board_size[1];
                     const px = headX * cellSize + cellSize/2;
                     const py = headY * cellSize + cellSize/2;
 
-                    // Draw cobra-like head
+                    // Draw slightly larger head
+                    ctx.fillStyle = colors.snake;
+                    ctx.strokeStyle = colors.snakeOutline;
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(px, py, cellSize/2, 0, Math.PI * 2);
                     ctx.fill();
@@ -296,10 +273,11 @@
 
                     // Add eyes
                     ctx.fillStyle = '#000';
-                    const eyeOffset = 3;
+                    const eyeOffset = 4;
+                    const eyeSize = 2.5;
                     ctx.beginPath();
-                    ctx.arc(px - eyeOffset, py - eyeOffset, 2, 0, Math.PI * 2);
-                    ctx.arc(px + eyeOffset, py - eyeOffset, 2, 0, Math.PI * 2);
+                    ctx.arc(px - eyeOffset, py - eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.arc(px + eyeOffset, py - eyeOffset, eyeSize, 0, Math.PI * 2);
                     ctx.fill();
                 });
             };
