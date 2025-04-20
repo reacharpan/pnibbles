@@ -4,19 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Snake Game</title>
+    <link rel="icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREQAAAAAAAREREAAAAAAAREREAAAAAAAAAAAAAAAAAEREREAAAAAAREREREAAAABEREREQAAAAAREREREREAABEREREREREAAAAAAAAAAAAAAREREREREREAARERERERERAAEREREREREREAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" type="image/x-icon">
     <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #282c34;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1c20 0%, #282c34 100%);
             color: white;
         }
         #root {
@@ -24,15 +25,41 @@
             max-width: 800px;
             text-align: center;
         }
+        .game-container {
+            padding: 20px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
         canvas {
-            border: 1px solid white;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #61dafb;
+            margin: 10px 0;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            color: #61dafb;
+            text-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         function SnakeGame() {
             const [gameState, setGameState] = useState(null);
@@ -40,6 +67,13 @@
             const [direction, setDirection] = useState('');
             const [score, setScore] = useState(0);
             const [ws, setWs] = useState(null);
+            const canvasRef = useRef(null);
+            const cellSize = 20;
+            const colors = {
+                snake: '#61dafb',
+                food: '#ff6b6b',
+                background: '#282c34'
+            };
 
             useEffect(() => {
                 const playerId = `player-${Math.random().toString(36).substr(2, 9)}`;
@@ -51,10 +85,67 @@
                 websocket.onmessage = (event) => {
                     const state = JSON.parse(event.data);
                     setGameState(state);
+                    renderGame(state);
                 };
 
                 return () => websocket.close();
             }, []);
+
+            const renderGame = (state) => {
+                if (!canvasRef.current || !state) return;
+                
+                const ctx = canvasRef.current.getContext('2d');
+                const canvas = canvasRef.current;
+                
+                // Clear canvas
+                ctx.fillStyle = colors.background;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw food
+                ctx.fillStyle = colors.food;
+                ctx.beginPath();
+                ctx.arc(
+                    state.food[0] * cellSize + cellSize/2,
+                    state.food[1] * cellSize + cellSize/2,
+                    cellSize/2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+
+                // Draw snakes
+                Object.entries(state.players).forEach(([id, segments]) => {
+                    const isCurrentPlayer = id === playerId;
+                    
+                    segments.forEach((segment, index) => {
+                        ctx.fillStyle = isCurrentPlayer ? colors.snake : '#4a9eff';
+                        ctx.shadowBlur = isCurrentPlayer ? 10 : 5;
+                        ctx.shadowColor = isCurrentPlayer ? colors.snake : '#4a9eff';
+                        
+                        if (index === 0) {
+                            // Draw head
+                            ctx.beginPath();
+                            ctx.arc(
+                                segment[0] * cellSize + cellSize/2,
+                                segment[1] * cellSize + cellSize/2,
+                                cellSize/2,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        } else {
+                            // Draw body segment
+                            ctx.fillRect(
+                                segment[0] * cellSize,
+                                segment[1] * cellSize,
+                                cellSize - 2,
+                                cellSize - 2
+                            );
+                        }
+                    });
+                    ctx.shadowBlur = 0;
+                });
+            };
 
             useEffect(() => {
                 if (ws && direction) {
@@ -87,15 +178,23 @@
             }, []);
 
             return (
-                <div>
+                <div className="game-container">
                     <h1>Snake Game</h1>
                     {gameState ? (
-                        <div>
-                            <p>Score: {score}</p>
-                            <canvas id="gameCanvas" width="400" height="400"></canvas>
-                        </div>
+                        <React.Fragment>
+                            <div className="score">Score: {score}</div>
+                            <canvas 
+                                ref={canvasRef} 
+                                width={400} 
+                                height={400}
+                            />
+                            <div className="controls">
+                                <p>Use arrow keys to control the snake</p>
+                                <p>Current direction: {direction || 'none'}</p>
+                            </div>
+                        </React.Fragment>
                     ) : (
-                        <p>Loading...</p>
+                        <p>Connecting to game server...</p>
                     )}
                 </div>
             );
