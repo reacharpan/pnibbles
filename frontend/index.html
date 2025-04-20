@@ -85,6 +85,10 @@
                 websocket.onmessage = (event) => {
                     const state = JSON.parse(event.data);
                     setGameState(state);
+                    // Update score from game state
+                    if (state.scores && state.scores[playerId]) {
+                        setScore(state.scores[playerId]);
+                    }
                     renderGame(state);
                 };
 

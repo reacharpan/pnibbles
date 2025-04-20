@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 import asyncio
 import json
 import logging
+import random
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,12 +14,21 @@ app = FastAPI()
 # Game state
 class SnakeGame:
     def __init__(self):
+        self.board_size = (20, 20)  # Initialize board_size first
         self.players = {}
-        self.food = (5, 5)
-        self.board_size = (20, 20)
+        self.scores = {}
+        self.food = self.generate_food()
+
+    def generate_food(self):
+        return (random.randint(0, self.board_size[0] - 1),
+                random.randint(0, self.board_size[1] - 1))
 
     def add_player(self, player_id):
         self.players[player_id] = [(0, 0)]
+        self.scores[player_id] = 0
+
+    def check_food_collision(self, head):
+        return head == self.food
 
     def move_player(self, player_id, direction):
         if player_id not in self.players:
@@ -36,13 +46,24 @@ class SnakeGame:
         else:
             return
 
-        self.players[player_id] = [new_head] + self.players[player_id][:-1]
+        # Check if snake ate food
+        if self.check_food_collision(new_head):
+            # Don't remove the tail - snake grows
+            self.players[player_id] = [new_head] + self.players[player_id]
+            # Increment score
+            self.scores[player_id] += 1
+            # Generate new food position
+            self.food = self.generate_food()
+        else:
+            # Normal movement - remove tail
+            self.players[player_id] = [new_head] + self.players[player_id][:-1]
 
     def get_state(self):
         return {
             "players": self.players,
             "food": self.food,
-            "board_size": self.board_size
+            "board_size": self.board_size,
+            "scores": self.scores
         }
 
 # Initialize game
@@ -72,3 +93,4 @@ async def websocket_endpoint(websocket: WebSocket, player_id: str):
     except WebSocketDisconnect:
         logger.info(f"Player {player_id} disconnected.")
         del game.players[player_id]
+        del game.scores[player_id]
