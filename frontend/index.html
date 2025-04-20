@@ -68,6 +68,7 @@
             const [score, setScore] = useState(0);
             const [ws, setWs] = useState(null);
             const canvasRef = useRef(null);
+            const moveIntervalRef = useRef(null);
             const cellSize = 20;
             const colors = {
                 snake: '#61dafb',
@@ -151,10 +152,27 @@
                 });
             };
 
-            useEffect(() => {
+            const moveSnake = () => {
                 if (ws && direction) {
                     ws.send(JSON.stringify({ direction }));
                 }
+            };
+
+            useEffect(() => {
+                if (direction) {
+                    // Clear existing interval if any
+                    if (moveIntervalRef.current) {
+                        clearInterval(moveIntervalRef.current);
+                    }
+                    // Set new interval to move snake every second
+                    moveIntervalRef.current = setInterval(moveSnake, 1000);
+                }
+
+                return () => {
+                    if (moveIntervalRef.current) {
+                        clearInterval(moveIntervalRef.current);
+                    }
+                };
             }, [direction]);
 
             const handleKeyDown = (event) => {
