@@ -99,13 +99,27 @@
             const moveIntervalRef = useRef(null);
             const cellSize = 20;
             const colors = {
-                snake: '#34A853',
-                snakeOutline: '#2D8544',
+                snake: '#2F4F4F',  // Changed to a darker green for a more realistic look
+                snakeOutline: '#1a2f2f',
                 food: '#EA4335',
                 foodOutline: '#D03A2C',
                 background: '#ffffff',
                 grid: '#f0f0f0'
             };
+
+            // Add interpolation state
+            const [prevGameState, setPrevGameState] = useState(null);
+            const [interpolation, setInterpolation] = useState(0);
+            const frameRef = useRef(null);
+
+            useEffect(() => {
+                const animate = () => {
+                    setInterpolation(i => (i + 0.1) % 1);
+                    frameRef.current = requestAnimationFrame(animate);
+                };
+                frameRef.current = requestAnimationFrame(animate);
+                return () => cancelAnimationFrame(frameRef.current);
+            }, []);
 
             useEffect(() => {
                 startNewGame();
@@ -123,10 +137,12 @@
 
                 websocket.onmessage = (event) => {
                     const state = JSON.parse(event.data);
+                    setPrevGameState(gameState);
                     setGameState(state);
                     if (state.scores && state.scores[playerId]) {
                         setScore(state.scores[playerId]);
                     }
+                    setInterpolation(0);
                     renderGame(state);
                 };
             };
@@ -170,66 +186,102 @@
                 const foodX = state.food[0] * cellSize + cellSize/2;
                 const foodY = state.food[1] * cellSize + cellSize/2;
                 
-                // Draw apple-like shape
                 ctx.beginPath();
                 ctx.arc(foodX, foodY, cellSize/2 - 2, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
-                
-                // Add leaf
-                ctx.fillStyle = '#4CAF50';
-                ctx.beginPath();
-                ctx.ellipse(foodX + 2, foodY - cellSize/2 + 2, 4, 6, Math.PI / 4, 0, Math.PI * 2);
-                ctx.fill();
 
                 // Draw snakes
                 Object.entries(state.players).forEach(([id, segments]) => {
                     const isCurrentPlayer = id === playerId;
                     
-                    // Draw snake body
-                    segments.forEach((segment, index) => {
-                        ctx.fillStyle = colors.snake;
-                        ctx.strokeStyle = colors.snakeOutline;
-                        ctx.lineWidth = 2;
+                    // Calculate interpolated positions
+                    let interpolatedSegments = segments;
+                    if (prevGameState && prevGameState.players[id]) {
+                        interpolatedSegments = segments.map((segment, i) => {
+                            const prevSegment = prevGameState.players[id][i] || segment;
+                            return [
+                                lerp(prevSegment[0], segment[0], interpolation),
+                                lerp(prevSegment[1], segment[1], interpolation)
+                            ];
+                        });
+                    }
+
+                    // Draw snake as a continuous body
+                    ctx.strokeStyle = colors.snakeOutline;
+                    ctx.fillStyle = colors.snake;
+                    ctx.lineWidth = 2;
+
+                    // Draw body path
+                    ctx.beginPath();
+                    interpolatedSegments.forEach((segment, index) => {
+                        // Handle wrap-around for x coordinate
+                        let x = segment[0];
+                        if (x < 0) x = state.board_size[0] - 1;
+                        if (x >= state.board_size[0]) x = 0;
                         
+                        // Handle wrap-around for y coordinate
+                        let y = segment[1];
+                        if (y < 0) y = state.board_size[1] - 1;
+                        if (y >= state.board_size[1]) y = 0;
+
+                        const px = x * cellSize + cellSize/2;
+                        const py = y * cellSize + cellSize/2;
+
                         if (index === 0) {
-                            // Draw head
-                            const x = segment[0] * cellSize + cellSize/2;
-                            const y = segment[1] * cellSize + cellSize/2;
-                            
-                            ctx.beginPath();
-                            ctx.arc(x, y, cellSize/2 - 1, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.stroke();
-                            
-                            // Add eyes
-                            ctx.fillStyle = '#000';
-                            const eyeOffset = 3;
-                            ctx.beginPath();
-                            ctx.arc(x - eyeOffset, y - eyeOffset, 2, 0, Math.PI * 2);
-                            ctx.arc(x + eyeOffset, y - eyeOffset, 2, 0, Math.PI * 2);
-                            ctx.fill();
+                            ctx.moveTo(px, py);
                         } else {
-                            // Draw body segment with rounded corners
-                            const x = segment[0] * cellSize;
-                            const y = segment[1] * cellSize;
-                            const radius = 4;
+                            // Create smooth curves between segments
+                            const prevSegment = interpolatedSegments[index - 1];
+                            let prevX = prevSegment[0];
+                            let prevY = prevSegment[1];
                             
-                            ctx.beginPath();
-                            ctx.moveTo(x + radius, y);
-                            ctx.lineTo(x + cellSize - radius, y);
-                            ctx.quadraticCurveTo(x + cellSize, y, x + cellSize, y + radius);
-                            ctx.lineTo(x + cellSize, y + cellSize - radius);
-                            ctx.quadraticCurveTo(x + cellSize, y + cellSize, x + cellSize - radius, y + cellSize);
-                            ctx.lineTo(x + radius, y + cellSize);
-                            ctx.quadraticCurveTo(x, y + cellSize, x, y + cellSize - radius);
-                            ctx.lineTo(x, y + radius);
-                            ctx.quadraticCurveTo(x, y, x + radius, y);
-                            ctx.fill();
-                            ctx.stroke();
+                            // Handle wrap-around for previous segment
+                            if (prevX < 0) prevX = state.board_size[0] - 1;
+                            if (prevX >= state.board_size[0]) prevX = 0;
+                            if (prevY < 0) prevY = state.board_size[1] - 1;
+                            if (prevY >= state.board_size[1]) prevY = 0;
+
+                            const cpx = (prevX * cellSize + cellSize/2 + px) / 2;
+                            const cpy = (prevY * cellSize + cellSize/2 + py) / 2;
+                            ctx.quadraticCurveTo(cpx, cpy, px, py);
                         }
                     });
+                    ctx.stroke();
+                    
+                    // Draw head
+                    const head = interpolatedSegments[0];
+                    let headX = head[0];
+                    let headY = head[1];
+                    
+                    // Handle wrap-around for head
+                    if (headX < 0) headX = state.board_size[0] - 1;
+                    if (headX >= state.board_size[0]) headX = 0;
+                    if (headY < 0) headY = state.board_size[1] - 1;
+                    if (headY >= state.board_size[1]) headY = 0;
+
+                    const px = headX * cellSize + cellSize/2;
+                    const py = headY * cellSize + cellSize/2;
+
+                    // Draw cobra-like head
+                    ctx.beginPath();
+                    ctx.arc(px, py, cellSize/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Add eyes
+                    ctx.fillStyle = '#000';
+                    const eyeOffset = 3;
+                    ctx.beginPath();
+                    ctx.arc(px - eyeOffset, py - eyeOffset, 2, 0, Math.PI * 2);
+                    ctx.arc(px + eyeOffset, py - eyeOffset, 2, 0, Math.PI * 2);
+                    ctx.fill();
                 });
+            };
+
+            // Add linear interpolation helper
+            const lerp = (start, end, t) => {
+                return start * (1 - t) + end * t;
             };
 
             const moveSnake = () => {

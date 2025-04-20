@@ -36,13 +36,13 @@ class SnakeGame:
 
         head = self.players[player_id][0]
         if direction == "up":
-            new_head = (head[0], head[1] - 1)
+            new_head = (head[0], (head[1] - 1) % self.board_size[1])
         elif direction == "down":
-            new_head = (head[0], head[1] + 1)
+            new_head = (head[0], (head[1] + 1) % self.board_size[1])
         elif direction == "left":
-            new_head = (head[0] - 1, head[1])
+            new_head = ((head[0] - 1) % self.board_size[0], head[1])
         elif direction == "right":
-            new_head = (head[0] + 1, head[1])
+            new_head = ((head[0] + 1) % self.board_size[0], head[1])
         else:
             return
 
