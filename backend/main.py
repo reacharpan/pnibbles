@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 import random
@@ -10,6 +11,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SnakeGame")
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize database on startup
 init_db()

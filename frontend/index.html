@@ -40,7 +40,7 @@
             flex-direction: column;
             align-items: flex-end;
             margin-bottom: 2vh;
-            margin-left: 240px; /* Space for high scores */
+            margin-left: 120px; /* Reduced from 240px to account for smaller scores widget */
         }
         canvas {
             border-radius: 8px;
@@ -125,7 +125,7 @@
             border: 1px solid rgba(138, 180, 248, 0.3);
             text-align: left;
             font-size: 14px;
-            width: 200px;
+            width: 100px; /* Reduced from 200px */
             backdrop-filter: blur(10px);
             z-index: 10;
         }
@@ -251,8 +251,24 @@
                 setGameOver(false);
                 setScore(0);
                 setDirection('');
-                setPrevGameState(null); // Reset previous game state
-                setGameState(null); // Reset current game state
+                setPrevGameState(null);
+                setGameState(null);
+
+                // Fetch initial top scores
+                fetch('http://localhost:8000/top-scores')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch top scores');
+                        }
+                        return response.json();
+                    })
+                    .then(scores => {
+                        console.log('Fetched top scores:', scores);
+                        setTopScores(scores);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching top scores:', error);
+                    });
 
                 const websocket = new WebSocket(`ws://localhost:8000/ws/${newPlayerId}`);
                 setWs(websocket);
@@ -365,35 +381,48 @@
                         });
                     }
 
-                    // Draw snake body
+                    // Draw snake body (excluding head)
                     ctx.strokeStyle = colors.snakeOutline;
                     ctx.fillStyle = colors.snake;
-                    ctx.lineWidth = Math.max(1, cellSize - 4); // Scale line width with cell size
+                    ctx.lineWidth = Math.max(1, cellSize - 4);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    // Draw body as a continuous path
-                    ctx.beginPath();
-                    interpolatedSegments.forEach((segment, index) => {
-                        const x = segment[0];
-                        const y = segment[1];
-                        const px = x * cellSize + cellSize/2;
-                        const py = y * cellSize + cellSize/2;
-
-                        if (index === 0) {
-                            ctx.moveTo(px, py);
-                        } else {
+                    if (interpolatedSegments.length > 1) {
+                        ctx.beginPath();
+                        // Start from second segment
+                        const firstBodySegment = interpolatedSegments[1];
+                        const px = firstBodySegment[0] * cellSize + cellSize/2;
+                        const py = firstBodySegment[1] * cellSize + cellSize/2;
+                        ctx.moveTo(px, py);
+                        
+                        // Draw rest of body
+                        for (let i = 2; i < interpolatedSegments.length; i++) {
+                            const segment = interpolatedSegments[i];
+                            const px = segment[0] * cellSize + cellSize/2;
+                            const py = segment[1] * cellSize + cellSize/2;
                             ctx.lineTo(px, py);
                         }
-                    });
-                    ctx.stroke();
+                        ctx.stroke();
+                    }
 
-                    // Draw head
+                    // Draw head separately
                     const head = interpolatedSegments[0];
                     const px = head[0] * cellSize + cellSize/2;
                     const py = head[1] * cellSize + cellSize/2;
 
-                    // Draw slightly larger head
+                    // Connect head to first body segment
+                    if (interpolatedSegments.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(px, py);
+                        const firstBody = interpolatedSegments[1];
+                        const firstBodyPx = firstBody[0] * cellSize + cellSize/2;
+                        const firstBodyPy = firstBody[1] * cellSize + cellSize/2;
+                        ctx.lineTo(firstBodyPx, firstBodyPy);
+                        ctx.stroke();
+                    }
+
+                    // Draw head circle
                     ctx.fillStyle = colors.snake;
                     ctx.strokeStyle = colors.snakeOutline;
                     ctx.lineWidth = 2;
@@ -404,8 +433,8 @@
 
                     // Add eyes
                     ctx.fillStyle = '#000';
-                    const eyeOffset = cellSize/5; // Scale eye position with cell size
-                    const eyeSize = cellSize/8; // Scale eye size with cell size
+                    const eyeOffset = cellSize/5;
+                    const eyeSize = cellSize/8;
                     ctx.beginPath();
                     ctx.arc(px - eyeOffset, py - eyeOffset, eyeSize, 0, Math.PI * 2);
                     ctx.arc(px + eyeOffset, py - eyeOffset, eyeSize, 0, Math.PI * 2);
@@ -492,21 +521,19 @@
                             {gameState ? (
                                 <React.Fragment>
                                     <div className="score">Score: {score}</div>
-                                    {topScores.length > 0 && (
-                                        <div className="high-scores">
-                                            <h3>Top Scores</h3>
-                                            <ol>
-                                                {topScores.map((score, index) => (
-                                                    <li key={index}>
-                                                        {score.player_name}: {score.score} 
-                                                        <small style={{color: '#8ab4f8', marginLeft: '8px'}}>
-                                                            {new Date(score.date).toLocaleDateString()}
-                                                        </small>
-                                                    </li>
-                                                ))}
-                                            </ol>
-                                        </div>
-                                    )}
+                                    <div className="high-scores">
+                                        <h3>Top Scores</h3>
+                                        <ol>
+                                            {topScores.map((score, index) => (
+                                                <li key={index}>
+                                                    {score.player_name}: {score.score} 
+                                                    <small style={{color: '#8ab4f8', marginLeft: '8px'}}>
+                                                        {new Date(score.date).toLocaleDateString()}
+                                                    </small>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </div>
                                     <canvas 
                                         ref={canvasRef} 
                                         width={720}
