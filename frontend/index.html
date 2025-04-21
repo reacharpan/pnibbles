@@ -227,65 +227,94 @@
             // Add interpolation state
             const [prevGameState, setPrevGameState] = useState(null);
             const [interpolation, setInterpolation] = useState(0);
-            const frameRef = useRef(null);
+            const frameRef = useRef(null); // For the animation frame
+            const wsRef = useRef(null); // Use ref for websocket to avoid stale closures
 
-            useEffect(() => {
-                const animate = () => {
-                    setInterpolation(i => Math.min((i + 0.15) % 1, 0.99)); // Smoother interpolation
-                    frameRef.current = requestAnimationFrame(animate);
-                    if (canvasRef.current && gameState) {
-                        renderGame(gameState);
-                    }
-                };
-                frameRef.current = requestAnimationFrame(animate);
-                return () => cancelAnimationFrame(frameRef.current);
-            }, []);
-
-            useEffect(() => {
-                startNewGame();
-            }, []);
-
-            const startNewGame = () => {
-                const newPlayerId = `player-${Math.random().toString(36).substr(2, 9)}`;
-                setPlayerId(newPlayerId);
-                setGameOver(false);
-                setScore(0);
-                setDirection('');
+            // Called when "Play Again" is clicked
+            const restartGame = () => {
+                console.log("Restarting game...");
+                // Stop the rendering loop
+                if (frameRef.current) {
+                    cancelAnimationFrame(frameRef.current);
+                    frameRef.current = null;
+                }
+                // Stop the movement interval
+                if (moveIntervalRef.current) {
+                    clearInterval(moveIntervalRef.current);
+                    moveIntervalRef.current = null;
+                }
+                // Close the existing WebSocket connection if it exists
+                if (wsRef.current) {
+                    console.log('Closing existing WebSocket connection...');
+                    wsRef.current.onclose = null; // Prevent default onclose handler during intentional close
+                    wsRef.current.close();
+                    wsRef.current = null;
+                }
+                // Clear the canvas immediately
+                if (canvasRef.current) {
+                    const ctx = canvasRef.current.getContext('2d');
+                    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                }
+                // Reset relevant states and show name input to start fresh
+                setShowNameInput(true); // Show the name input modal
+                setIsHighScore(false);
                 setPrevGameState(null);
                 setGameState(null);
+                setPlayerId(null); // Clear old player ID
+                setDirection('');
+                setScore(0);
+                setGameOver(false);
+                setWs(null); // Clear ws state as well (though wsRef is primary now)
+            };
 
-                // Fetch initial top scores
+            // New function to set up the connection after name is submitted
+            const initiateNewGameConnection = () => {
+                console.log("Initiating new game connection...");
+                const newPlayerId = `player-${Math.random().toString(36).substr(2, 9)}`;
+                setPlayerId(newPlayerId); // Set the new player ID
+                setGameOver(false); // Ensure game over is false
+                setScore(0); // Reset score for new game
+                setDirection(''); // Reset direction
+
+                // Re-fetch top scores when starting a new connection
                 fetch('http://localhost:8000/top-scores')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch top scores');
-                        }
-                        return response.json();
-                    })
-                    .then(scores => {
-                        console.log('Fetched top scores:', scores);
-                        setTopScores(scores);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching top scores:', error);
-                    });
+                    .then(response => response.json())
+                    .then(scores => setTopScores(scores))
+                    .catch(console.error);
 
                 const websocket = new WebSocket(`ws://localhost:8000/ws/${newPlayerId}`);
-                setWs(websocket);
+                wsRef.current = websocket; // Store in ref
+                setWs(websocket); // Also update state if needed elsewhere
 
                 websocket.onopen = () => {
-                    // Send player name when connection opens
-                    websocket.send(JSON.stringify({ player_name: playerName }));
+                    console.log('New WebSocket Connected');
+                    // Send player name for the new game
+                    websocket.send(JSON.stringify({
+                        player_name: playerName
+                    }));
+                    // Start animation loop now that connection is open
+                    if (!frameRef.current) {
+                         frameRef.current = requestAnimationFrame(animate);
+                    }
                 };
 
                 websocket.onmessage = (event) => {
                     const state = JSON.parse(event.data);
-                    setPrevGameState(gameState);
+                    // Use functional updates for state based on previous state
+                    setPrevGameState(currentGameState => currentGameState);
                     setGameState(state);
-                    if (state.scores && state.scores[newPlayerId]) {
-                        setScore(state.scores[newPlayerId]);
+
+                    // Update score based on the *current* player ID from state
+                    if (state.scores && state.scores[newPlayerId] !== undefined) {
+                         setScore(state.scores[newPlayerId]);
+                    } else if (state.scores && !state.game_over[newPlayerId]) {
+                         // If score for new player ID isn't set yet, but game isn't over, assume 0
+                         setScore(0);
                     }
+
+                    // Check game over for the *current* player ID from state
                     if (state.game_over && state.game_over[newPlayerId]) {
+                        console.log("Game Over message received for player:", newPlayerId);
                         setGameOver(true);
                         if (state.is_top_10) {
                             setIsHighScore(true);
@@ -293,33 +322,89 @@
                         if (state.top_scores) {
                             setTopScores(state.top_scores);
                         }
+                        // Stop intervals and animation
                         if (moveIntervalRef.current) {
                             clearInterval(moveIntervalRef.current);
+                            moveIntervalRef.current = null;
                         }
+                        if (frameRef.current) {
+                            cancelAnimationFrame(frameRef.current);
+                            frameRef.current = null;
+                        }
+                    } else {
+                        // Ensure game over is false if the message doesn't indicate it for this player
+                        // This prevents flickering if a game_over message for another player arrives
+                        if (gameOver) setGameOver(false);
                     }
                     setInterpolation(0);
-                    renderGame(state);
                 };
 
-                websocket.onclose = () => {
+                websocket.onerror = (error) => {
+                    console.error('WebSocket Error:', error);
+                    // Consider showing an error message to the user
+                };
+
+                websocket.onclose = (event) => {
+                    // This handler is now primarily for unexpected closes
+                    console.log('WebSocket Disconnected Unexpectedly:', event.code, event.reason);
                     if (moveIntervalRef.current) {
                         clearInterval(moveIntervalRef.current);
+                        moveIntervalRef.current = null;
                     }
+                     if (frameRef.current) {
+                        cancelAnimationFrame(frameRef.current);
+                        frameRef.current = null;
+                    }
+                    // Maybe set game over or show a connection error message
+                    setGameOver(true); // Treat unexpected close as game over
                 };
             };
 
-            const restartGame = () => {
-                if (ws) {
-                    ws.close();
+            // Animation loop function (defined outside useEffect to be accessible)
+            const animate = () => {
+                setInterpolation(i => Math.min((i + 0.15) % 1, 0.99));
+                if (canvasRef.current && gameState) {
+                    renderGame(gameState);
                 }
-                startNewGame();
+                // Continue animation only if the frameRef hasn't been cancelled (e.g., by restartGame)
+                if (frameRef.current !== null) {
+                    frameRef.current = requestAnimationFrame(animate);
+                }
             };
 
+            // Effect for managing the animation loop based on game state
+            useEffect(() => {
+                // Start animation only when modal is hidden and game is not over
+                if (!showNameInput && !gameOver && frameRef.current === null) {
+                    console.log("Starting animation loop.");
+                    frameRef.current = requestAnimationFrame(animate);
+                }
+                // Cleanup function to stop animation if component unmounts or state changes
+                return () => {
+                    if (frameRef.current) {
+                        console.log("Stopping animation loop due to effect cleanup.");
+                        cancelAnimationFrame(frameRef.current);
+                        frameRef.current = null;
+                    }
+                };
+            }, [showNameInput, gameOver, gameState]); // Re-run when these change
+
+
+            // Initial setup effect - runs once on mount
+            useEffect(() => {
+                 fetch('http://localhost:8000/top-scores')
+                    .then(response => response.json())
+                    .then(scores => setTopScores(scores))
+                    .catch(console.error);
+                // No automatic game start here anymore
+            }, []); // Empty dependency array
+
+            // Called when name is submitted
             const handleNameSubmit = (e) => {
                 e.preventDefault();
                 if (playerName.trim()) {
-                    setShowNameInput(false);
-                    startNewGame();
+                    setShowNameInput(false); // Hide the modal
+                    initiateNewGameConnection(); // Start the new game connection
                 }
             };
 
@@ -370,6 +455,11 @@
 
                 // Draw snakes
                 Object.entries(state.players).forEach(([id, segments]) => {
+                    // Explicitly check if this player is marked as game_over in the current state
+                    if (state.game_over[id]) {
+                        return; // Don't render snakes that are game over
+                    }
+
                     let interpolatedSegments = segments;
                     if (prevGameState && prevGameState.players[id]) {
                         interpolatedSegments = segments.map((segment, i) => {
@@ -549,12 +639,7 @@
                                             {isHighScore && (
                                                 <p>Congratulations! You made it to the top 10!</p>
                                             )}
-                                            <button onClick={() => {
-                                                setShowNameInput(true);
-                                                setIsHighScore(false);
-                                                setPrevGameState(null);
-                                                setGameState(null);
-                                            }}>Play Again</button>
+                                            <button onClick={restartGame}>Play Again</button>
                                         </div>
                                     )}
                                 </React.Fragment>

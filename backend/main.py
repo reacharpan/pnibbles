@@ -104,12 +104,17 @@ class SnakeGame:
             self.players[player_id] = [new_head] + self.players[player_id][:-1]
 
     def get_state(self):
+        # Filter out players who are marked as game_over
+        active_players = {
+            pid: segments for pid, segments in self.players.items()
+            if not self.game_over.get(pid, False)
+        }
         return {
-            "players": self.players,
+            "players": active_players, # Return only active players
             "food": self.food,
             "board_size": self.board_size,
-            "scores": self.scores,
-            "game_over": self.game_over
+            "scores": self.scores, # Keep sending all scores
+            "game_over": self.game_over # Keep sending all game_over statuses
         }
 
 # Initialize game
@@ -136,6 +141,9 @@ async def websocket_endpoint(websocket: WebSocket, player_id: str):
         # Initialize player
         game.add_player(player_id, player_name)
         logger.info(f"Player {player_name} ({player_id}) connected.")
+        
+        # Send initial game state
+        await websocket.send_text(json.dumps(game.get_state()))
         
         while True:
             data = await websocket.receive_text()
