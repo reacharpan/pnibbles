@@ -1,4 +1,13 @@
 fastapi
 uvicorn
 websockets
-sqlite3
+
+# Testing
+pytest
+pytest-asyncio
+httpx
+
+# Documentation
+sphinx
+sphinx-rtd-theme
+sphinxcontrib-mermaid
