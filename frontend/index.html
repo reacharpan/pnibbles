@@ -21,13 +21,6 @@
             min-height: 100vh;
             font-family: 'Roboto', sans-serif;
         }
-        #score {
-            color: #ffcc00;
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 20px;
-            text-shadow: 2px 2px 4px #222;
-        }
         #game-container {
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             border-radius: 15px;
@@ -44,7 +37,6 @@
     </style>
 </head>
 <body>
-    <div id="score">Score: 0</div>
     <div id="game-container"></div>
     <script>
     window.onload = function() {
@@ -169,7 +161,7 @@
                 if (gameState.scores && gameState.scores[playerId] !== undefined) {
                     score = gameState.scores[playerId];
                     scoreText.setText('Score: ' + score);
-                    document.getElementById('score').textContent = 'Score: ' + score;
+                    // Removed: document.getElementById('score').textContent = 'Score: ' + score;
                 }
                 if (gameState.food && (gameState.food[0] !== food.x || gameState.food[1] !== food.y)) {
                     food = { x: gameState.food[0], y: gameState.food[1] };
