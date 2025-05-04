@@ -85,6 +85,12 @@
             setupWebSocket(this);
             // Keyboard
             this.input.keyboard.on('keydown', (e) => handleKey(e, this));
+            // Restart on R if game over
+            this.input.keyboard.on('keydown-R', () => {
+                if (gameOver) {
+                    location.reload();
+                }
+            });
         }
 
         function update() {
@@ -181,7 +187,9 @@
 
         function showGameOver(scene, isTopScore = false, message = 'Game Over!') {
             if (gameOverText) gameOverText.destroy();
-            gameOverText = scene.add.text(WIDTH/2, HEIGHT/2, isTopScore ? 'New High Score!\n' + message : message, {
+            let msg = isTopScore ? 'New High Score!\n' + message : message;
+            msg += "\nPress 'R' to Restart";
+            gameOverText = scene.add.text(WIDTH/2, HEIGHT/2, msg, {
                 font: '48px monospace', fill: '#ff4444', fontWeight: 'bold', stroke: '#000', strokeThickness: 6, align: 'center'
             }).setOrigin(0.5);
         }
