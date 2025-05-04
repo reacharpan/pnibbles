@@ -1,0 +1,320 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>main &mdash; pnibbles 2025 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=cb975c41"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.esm.min.mjs"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.1.4/dist/mermaid-layout-elk.esm.min.mjs"></script>
+      <script type="module">True</script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+      <script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.esm.min.mjs";
+window.addEventListener("load", () => mermaid.run());
+</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pnibbles
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/main.html">Main Game API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/db.html">Database API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pnibbles</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">main</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for main</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">WebSocket</span><span class="p">,</span> <span class="n">WebSocketDisconnect</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTMLResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">db</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_db</span><span class="p">,</span> <span class="n">save_score</span><span class="p">,</span> <span class="n">get_top_scores</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;SnakeGame&quot;</span><span class="p">)</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+
+<span class="c1"># Add CORS middleware</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+    <span class="n">CORSMiddleware</span><span class="p">,</span>
+    <span class="n">allow_origins</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>  <span class="c1"># In production, replace with specific origins</span>
+    <span class="n">allow_credentials</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">allow_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">allow_headers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="c1"># Initialize database on startup</span>
+<span class="n">init_db</span><span class="p">()</span>
+
+<span class="c1"># Game state</span>
+<div class="viewcode-block" id="SnakeGame">
+<a class="viewcode-back" href="../index.html#main.SnakeGame">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SnakeGame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">36</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>  <span class="c1"># 16:9 ratio with height of 20 cells</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">players</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">food</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_food</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player_names</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Store player names</span>
+
+<div class="viewcode-block" id="SnakeGame.generate_food">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.generate_food">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_food</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="SnakeGame.add_player">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.add_player">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_player</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player_id</span><span class="p">,</span> <span class="n">player_name</span><span class="p">):</span>
+        <span class="c1"># Start snake in the middle of the left side</span>
+        <span class="n">start_x</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">start_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scores</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player_names</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">player_name</span></div>
+
+
+<div class="viewcode-block" id="SnakeGame.check_food_collision">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.check_food_collision">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_food_collision</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">head</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">food</span></div>
+
+
+<div class="viewcode-block" id="SnakeGame.check_self_collision">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.check_self_collision">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_self_collision</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player_id</span><span class="p">,</span> <span class="n">new_head</span><span class="p">):</span>
+        <span class="c1"># Check if the new head position collides with any part of the snake&#39;s body</span>
+        <span class="c1"># Skip the last segment since it will move out of the way</span>
+        <span class="n">snake_body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">new_head</span> <span class="ow">in</span> <span class="n">snake_body</span></div>
+
+
+<div class="viewcode-block" id="SnakeGame.reset_player">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.reset_player">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_player</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player_id</span><span class="p">):</span>
+        <span class="c1"># Start snake in the middle of the left side</span>
+        <span class="n">start_x</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">start_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scores</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="SnakeGame.move_player">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.move_player">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">move_player</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player_id</span><span class="p">,</span> <span class="n">direction</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">player_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">players</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">player_id</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="n">head</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">direction</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
+            <span class="n">new_head</span> <span class="o">=</span> <span class="p">(</span><span class="n">head</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">head</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">direction</span> <span class="o">==</span> <span class="s2">&quot;down&quot;</span><span class="p">:</span>
+            <span class="n">new_head</span> <span class="o">=</span> <span class="p">(</span><span class="n">head</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">head</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">direction</span> <span class="o">==</span> <span class="s2">&quot;left&quot;</span><span class="p">:</span>
+            <span class="n">new_head</span> <span class="o">=</span> <span class="p">(</span><span class="n">head</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">head</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">direction</span> <span class="o">==</span> <span class="s2">&quot;right&quot;</span><span class="p">:</span>
+            <span class="n">new_head</span> <span class="o">=</span> <span class="p">(</span><span class="n">head</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">head</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Check for wall collision</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new_head</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">new_head</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">or</span>
+            <span class="n">new_head</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">new_head</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Check for self collision</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_self_collision</span><span class="p">(</span><span class="n">player_id</span><span class="p">,</span> <span class="n">new_head</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Check if snake ate food</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_food_collision</span><span class="p">(</span><span class="n">new_head</span><span class="p">):</span>
+            <span class="c1"># Don&#39;t remove the tail - snake grows</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_head</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span>
+            <span class="c1"># Increment score</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scores</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># Generate new food position</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">food</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_food</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Normal movement - remove tail</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_head</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="SnakeGame.get_state">
+<a class="viewcode-back" href="../index.html#main.SnakeGame.get_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Filter out players who are marked as game_over</span>
+        <span class="n">active_players</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">pid</span><span class="p">:</span> <span class="n">segments</span> <span class="k">for</span> <span class="n">pid</span><span class="p">,</span> <span class="n">segments</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">players</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;players&quot;</span><span class="p">:</span> <span class="n">active_players</span><span class="p">,</span> <span class="c1"># Return only active players</span>
+            <span class="s2">&quot;food&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">food</span><span class="p">,</span>
+            <span class="s2">&quot;board_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">board_size</span><span class="p">,</span>
+            <span class="s2">&quot;scores&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">scores</span><span class="p">,</span> <span class="c1"># Keep sending all scores</span>
+            <span class="s2">&quot;game_over&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="c1"># Keep sending all game_over statuses</span>
+        <span class="p">}</span></div>
+</div>
+
+
+<span class="c1"># Initialize game</span>
+<span class="n">game</span> <span class="o">=</span> <span class="n">SnakeGame</span><span class="p">()</span>
+
+<div class="viewcode-block" id="get">
+<a class="viewcode-back" href="../index.html#main.get">[docs]</a>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">HTMLResponse</span><span class="p">(</span><span class="s2">&quot;&lt;h1&gt;Snake Game Backend&lt;/h1&gt;&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_high_scores">
+<a class="viewcode-back" href="../index.html#main.get_high_scores">[docs]</a>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/top-scores&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_high_scores</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">get_top_scores</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="websocket_endpoint">
+<a class="viewcode-back" href="../index.html#main.websocket_endpoint">[docs]</a>
+<span class="nd">@app</span><span class="o">.</span><span class="n">websocket</span><span class="p">(</span><span class="s2">&quot;/ws/</span><span class="si">{player_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">websocket_endpoint</span><span class="p">(</span><span class="n">websocket</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">,</span> <span class="n">player_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    
+    <span class="c1"># Wait for player name</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+        <span class="n">player_info</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">player_name</span> <span class="o">=</span> <span class="n">player_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;player_name&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Player_</span><span class="si">{</span><span class="n">player_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Initialize player</span>
+        <span class="n">game</span><span class="o">.</span><span class="n">add_player</span><span class="p">(</span><span class="n">player_id</span><span class="p">,</span> <span class="n">player_name</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Player </span><span class="si">{</span><span class="n">player_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">player_id</span><span class="si">}</span><span class="s2">) connected.&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Send initial game state</span>
+        <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">game</span><span class="o">.</span><span class="n">get_state</span><span class="p">()))</span>
+        
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="s2">&quot;direction&quot;</span> <span class="ow">in</span> <span class="n">message</span><span class="p">:</span>
+                <span class="n">game</span><span class="o">.</span><span class="n">move_player</span><span class="p">(</span><span class="n">player_id</span><span class="p">,</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;direction&quot;</span><span class="p">])</span>
+                
+                <span class="c1"># Check if game just ended</span>
+                <span class="k">if</span> <span class="n">game</span><span class="o">.</span><span class="n">game_over</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">player_id</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="n">final_score</span> <span class="o">=</span> <span class="n">game</span><span class="o">.</span><span class="n">scores</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span>
+                    <span class="n">is_top_10</span> <span class="o">=</span> <span class="n">save_score</span><span class="p">(</span><span class="n">game</span><span class="o">.</span><span class="n">player_names</span><span class="p">[</span><span class="n">player_id</span><span class="p">],</span> <span class="n">final_score</span><span class="p">)</span>
+                    <span class="n">top_scores</span> <span class="o">=</span> <span class="n">get_top_scores</span><span class="p">()</span>
+                    
+                    <span class="c1"># Send game over message with high score info</span>
+                    <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span>
+                        <span class="o">**</span><span class="n">game</span><span class="o">.</span><span class="n">get_state</span><span class="p">(),</span>
+                        <span class="s2">&quot;is_top_10&quot;</span><span class="p">:</span> <span class="n">is_top_10</span><span class="p">,</span>
+                        <span class="s2">&quot;top_scores&quot;</span><span class="p">:</span> <span class="n">top_scores</span>
+                    <span class="p">}))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Send regular game state</span>
+                    <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">game</span><span class="o">.</span><span class="n">get_state</span><span class="p">()))</span>
+                    
+    <span class="k">except</span> <span class="n">WebSocketDisconnect</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Player </span><span class="si">{</span><span class="n">game</span><span class="o">.</span><span class="n">player_names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">player_id</span><span class="p">,</span><span class="w"> </span><span class="n">player_id</span><span class="p">)</span><span class="si">}</span><span class="s2"> disconnected.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">player_id</span> <span class="ow">in</span> <span class="n">game</span><span class="o">.</span><span class="n">players</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">game</span><span class="o">.</span><span class="n">players</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">game</span><span class="o">.</span><span class="n">scores</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">game</span><span class="o">.</span><span class="n">game_over</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">game</span><span class="o">.</span><span class="n">player_names</span><span class="p">[</span><span class="n">player_id</span><span class="p">]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Arpan Shah.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

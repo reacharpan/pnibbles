@@ -3,656 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
-    <link rel="icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREQAAAAAAAREREAAAAAAAREREAAAAAAAAAAAAAAAAAEREREAAAAAAREREREAAAABEREREQAAAAAREREREREAABEREREREREAAAAAAAAAAAAAAREREREREREAARERERERERAAEREREREREREAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" type="image/x-icon">
-    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Snake Game (Pixi.js)</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAGKSURBVFiF7ZY9TsNAEIXfbCASSByAngIJxAHouAEFokcchYYT0NJwGgoOQEXHEWg4AB01EgmJn2F3aYzjxF57bYSUfJJlz+6bmTf27HoBYmRZ1vcwMrNHM7tJkmQ3iiIys0zOzMySJNlV1d0wDJ/DCDAY/BTgQlVfwjB8MLMHd38vr5nZg6q+AFcAhTrPBCimYGZPIQCxqu4DOBWRKxEZALgDsFDVg8JnEJF7VS0D5mkjsACwZYzhOI6nABaqegigAOzEcTwlY2wZeO7lfQATEUFd65hzU9XJ/y0wM8/1uypwAkDOuSERfQEYE9GFiHwQUUpEsYhMAZwT0SeAgXPuO8uyfl7WOVdW/AVAS2U9IroUkTcAmZkdisg7gGsRmQF4BXBsZqOqirMsy0umUez2EsDCzB5VNSr+lG3wIKJJEASjIAhOAZwBGAPYIyJqQld5EO0BbDcRWHsT1rXgT0uwyfhvC9QR2ASbNhH9KVB3Cv5GYOnN1kSgjsDKm00p9dcF1jYFG7XgtztxFf5+DP8ARTunmljwrRAAAAAASUVORK5CYII=">
+    <script src="pixi.min.js"></script>
     <style>
         body {
-            font-family: 'Google Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: #202124;
-            color: white;
-            overflow: hidden;
-        }
-        #root {
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .game-container {
-            padding: 20px;
-            border-radius: 10px;
-            background: #303134;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            position: relative;
-            width: min(95vh * 1.8, 95vw);
-            aspect-ratio: 1.8;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            margin-bottom: 2vh;
-            margin-left: 120px; /* Reduced from 240px to account for smaller scores widget */
-        }
-        canvas {
-            border-radius: 8px;
-            margin: 0;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-            background: #ffffff;
-            width: calc(100% - 20px);
-            height: calc(100% - 100px);
-            border: 2px solid #8ab4f8;
-            margin-bottom: 10px;
-        }
-        .score {
-            position: absolute;
-            top: 20px;
-            right: 40px;
-            font-size: 28px;
-            font-weight: bold;
-            color: #8ab4f8;
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            border: 1px solid rgba(138, 180, 248, 0.3);
-        }
-        .controls {
-            margin: 0;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: auto;
-        }
-        .controls p {
-            margin: 0;
-            font-size: 14px;
-        }
-        h1 {
-            margin: 0 0 10px 0;
-            color: #8ab4f8;
-            font-size: 32px;
-            align-self: center;
-            width: 100%;
-            text-align: center;
-        }
-        .game-over {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px 40px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .game-over h2 {
-            color: #ff4444;
-            margin-bottom: 20px;
-        }
-        .game-over button {
-            background: #8ab4f8;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            color: #202124;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .game-over button:hover {
-            background: #adc8ff;
-        }
-        .high-scores {
-            position: fixed;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.3);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid rgba(138, 180, 248, 0.3);
-            text-align: left;
-            font-size: 14px;
-            width: 100px; /* Reduced from 200px */
-            backdrop-filter: blur(10px);
-            z-index: 10;
-        }
-        .high-scores h3 {
-            margin: 0 0 10px 0;
-            color: #8ab4f8;
-            font-size: 16px;
-        }
-        .high-scores ol {
-            margin: 0;
-            padding-left: 20px;
-            color: #fff;
-        }
-        .high-scores li {
-            margin-bottom: 5px;
-            font-size: 12px;
-        }
-        .high-scores small {
-            display: block;
-            margin-left: 0 !important;
-            opacity: 0.7;
-        }
-        .player-name-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
             align-items: center;
-            z-index: 1000;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Roboto', sans-serif;
         }
-        .player-name-form {
-            background: #303134;
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .player-name-form input {
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #8ab4f8;
-            background: #202124;
-            color: white;
-            border-radius: 5px;
-            width: 200px;
-        }
-        .player-name-form button {
-            background: #8ab4f8;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            color: #202124;
+        #score {
+            color: #ffcc00;
+            font-size: 2rem;
             font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
+            margin: 20px;
+            text-shadow: 2px 2px 4px #222;
         }
-        .player-name-form button:hover {
-            background: #adc8ff;
+        #game-container {
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            border-radius: 15px;
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+        }
+        /* Ensure the canvas is visible and sized correctly */
+        #game-container canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
-        function SnakeGame() {
-            const [gameState, setGameState] = useState(null);
-            const [playerId, setPlayerId] = useState(null);
-            const [playerName, setPlayerName] = useState('');
-            const [direction, setDirection] = useState('');
-            const [score, setScore] = useState(0);
-            const [ws, setWs] = useState(null);
-            const [gameOver, setGameOver] = useState(false);
-            const [showNameInput, setShowNameInput] = useState(true);
-            const [topScores, setTopScores] = useState([]);
-            const [isHighScore, setIsHighScore] = useState(false);
-            const canvasRef = useRef(null);
-            const moveIntervalRef = useRef(null);
-            // Calculate cell size based on canvas dimensions and game board size
-            const getCellSize = (canvas, state) => {
-                if (!state) return 20;
-                const cellWidth = canvas.width / state.board_size[0];
-                const cellHeight = canvas.height / state.board_size[1];
-                return Math.min(cellWidth, cellHeight);
-            };
-            const colors = {
-                snake: '#2F4F4F',  // Changed to a darker green for a more realistic look
-                snakeOutline: '#1a2f2f',
-                food: '#EA4335',
-                foodOutline: '#D03A2C',
-                background: '#ffffff',
-                grid: '#f0f0f0'
-            };
-
-            // Add interpolation state
-            const [prevGameState, setPrevGameState] = useState(null);
-            const [interpolation, setInterpolation] = useState(0);
-            const frameRef = useRef(null); // For the animation frame
-            const wsRef = useRef(null); // Use ref for websocket to avoid stale closures
-
-            // Called when "Play Again" is clicked
-            const restartGame = () => {
-                console.log("Restarting game...");
-                // Stop the rendering loop
-                if (frameRef.current) {
-                    cancelAnimationFrame(frameRef.current);
-                    frameRef.current = null;
-                }
-                // Stop the movement interval
-                if (moveIntervalRef.current) {
-                    clearInterval(moveIntervalRef.current);
-                    moveIntervalRef.current = null;
-                }
-                // Close the existing WebSocket connection if it exists
-                if (wsRef.current) {
-                    console.log('Closing existing WebSocket connection...');
-                    wsRef.current.onclose = null; // Prevent default onclose handler during intentional close
-                    wsRef.current.close();
-                    wsRef.current = null;
-                }
-                // Clear the canvas immediately
-                if (canvasRef.current) {
-                    const ctx = canvasRef.current.getContext('2d');
-                    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                }
-                // Reset relevant states and show name input to start fresh
-                setShowNameInput(true); // Show the name input modal
-                setIsHighScore(false);
-                setPrevGameState(null);
-                setGameState(null);
-                setPlayerId(null); // Clear old player ID
-                setDirection('');
-                setScore(0);
-                setGameOver(false);
-                setWs(null); // Clear ws state as well (though wsRef is primary now)
-            };
-
-            // New function to set up the connection after name is submitted
-            const initiateNewGameConnection = () => {
-                console.log("Initiating new game connection...");
-                const newPlayerId = `player-${Math.random().toString(36).substr(2, 9)}`;
-                setPlayerId(newPlayerId); // Set the new player ID
-                setGameOver(false); // Ensure game over is false
-                setScore(0); // Reset score for new game
-                setDirection(''); // Reset direction
-
-                // Re-fetch top scores when starting a new connection
-                fetch('http://localhost:8000/top-scores')
-                    .then(response => response.json())
-                    .then(scores => setTopScores(scores))
-                    .catch(console.error);
-
-                const websocket = new WebSocket(`ws://localhost:8000/ws/${newPlayerId}`);
-                wsRef.current = websocket; // Store in ref
-                setWs(websocket); // Also update state if needed elsewhere
-
-                websocket.onopen = () => {
-                    console.log('New WebSocket Connected');
-                    // Send player name for the new game
-                    websocket.send(JSON.stringify({
-                        player_name: playerName
-                    }));
-                    // Start animation loop now that connection is open
-                    if (!frameRef.current) {
-                         frameRef.current = requestAnimationFrame(animate);
-                    }
-                };
-
-                websocket.onmessage = (event) => {
-                    const state = JSON.parse(event.data);
-                    // Use functional updates for state based on previous state
-                    setPrevGameState(currentGameState => currentGameState);
-                    setGameState(state);
-
-                    // Update score based on the *current* player ID from state
-                    if (state.scores && state.scores[newPlayerId] !== undefined) {
-                         setScore(state.scores[newPlayerId]);
-                    } else if (state.scores && !state.game_over[newPlayerId]) {
-                         // If score for new player ID isn't set yet, but game isn't over, assume 0
-                         setScore(0);
-                    }
-
-                    // Check game over for the *current* player ID from state
-                    if (state.game_over && state.game_over[newPlayerId]) {
-                        console.log("Game Over message received for player:", newPlayerId);
-                        setGameOver(true);
-                        if (state.is_top_10) {
-                            setIsHighScore(true);
-                        }
-                        if (state.top_scores) {
-                            setTopScores(state.top_scores);
-                        }
-                        // Stop intervals and animation
-                        if (moveIntervalRef.current) {
-                            clearInterval(moveIntervalRef.current);
-                            moveIntervalRef.current = null;
-                        }
-                        if (frameRef.current) {
-                            cancelAnimationFrame(frameRef.current);
-                            frameRef.current = null;
-                        }
-                    } else {
-                        // Ensure game over is false if the message doesn't indicate it for this player
-                        // This prevents flickering if a game_over message for another player arrives
-                        if (gameOver) setGameOver(false);
-                    }
-                    setInterpolation(0);
-                };
-
-                websocket.onerror = (error) => {
-                    console.error('WebSocket Error:', error);
-                    // Consider showing an error message to the user
-                };
-
-                websocket.onclose = (event) => {
-                    // This handler is now primarily for unexpected closes
-                    console.log('WebSocket Disconnected Unexpectedly:', event.code, event.reason);
-                    if (moveIntervalRef.current) {
-                        clearInterval(moveIntervalRef.current);
-                        moveIntervalRef.current = null;
-                    }
-                     if (frameRef.current) {
-                        cancelAnimationFrame(frameRef.current);
-                        frameRef.current = null;
-                    }
-                    // Maybe set game over or show a connection error message
-                    setGameOver(true); // Treat unexpected close as game over
-                };
-            };
-
-            // Animation loop function (defined outside useEffect to be accessible)
-            const animate = () => {
-                setInterpolation(i => Math.min((i + 0.15) % 1, 0.99));
-                if (canvasRef.current && gameState) {
-                    renderGame(gameState);
-                }
-                // Continue animation only if the frameRef hasn't been cancelled (e.g., by restartGame)
-                if (frameRef.current !== null) {
-                    frameRef.current = requestAnimationFrame(animate);
-                }
-            };
-
-            // Effect for managing the animation loop based on game state
-            useEffect(() => {
-                // Start animation only when modal is hidden and game is not over
-                if (!showNameInput && !gameOver && frameRef.current === null) {
-                    console.log("Starting animation loop.");
-                    frameRef.current = requestAnimationFrame(animate);
-                }
-                // Cleanup function to stop animation if component unmounts or state changes
-                return () => {
-                    if (frameRef.current) {
-                        console.log("Stopping animation loop due to effect cleanup.");
-                        cancelAnimationFrame(frameRef.current);
-                        frameRef.current = null;
-                    }
-                };
-            }, [showNameInput, gameOver, gameState]); // Re-run when these change
-
-
-            // Initial setup effect - runs once on mount
-            useEffect(() => {
-                 fetch('http://localhost:8000/top-scores')
-                    .then(response => response.json())
-                    .then(scores => setTopScores(scores))
-                    .catch(console.error);
-                // No automatic game start here anymore
-            }, []); // Empty dependency array
-
-            // Called when name is submitted
-            const handleNameSubmit = (e) => {
-                e.preventDefault();
-                if (playerName.trim()) {
-                    setShowNameInput(false); // Hide the modal
-                    initiateNewGameConnection(); // Start the new game connection
-                }
-            };
-
-            const drawGrid = (ctx, width, height, cellSize) => {
-                ctx.strokeStyle = colors.grid;
-                ctx.lineWidth = 0.5;
-                
-                for (let x = 0; x <= width; x += cellSize) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, height);
-                    ctx.stroke();
-                }
-                
-                for (let y = 0; y <= height; y += cellSize) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(width, y);
-                    ctx.stroke();
-                }
-            };
-
-            const renderGame = (state) => {
-                if (!canvasRef.current || !state) return;
-                
-                const ctx = canvasRef.current.getContext('2d');
-                const canvas = canvasRef.current;
-                const cellSize = getCellSize(canvas, state);
-                
-                // Clear canvas
-                ctx.fillStyle = colors.background;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw grid
-                drawGrid(ctx, canvas.width, canvas.height, cellSize);
-
-                // Draw food
-                ctx.fillStyle = colors.food;
-                ctx.strokeStyle = colors.foodOutline;
-                ctx.lineWidth = 2;
-                const foodX = state.food[0] * cellSize + cellSize/2;
-                const foodY = state.food[1] * cellSize + cellSize/2;
-                
-                ctx.beginPath();
-                ctx.arc(foodX, foodY, cellSize/2 - 2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-                // Draw snakes
-                Object.entries(state.players).forEach(([id, segments]) => {
-                    // Explicitly check if this player is marked as game_over in the current state
-                    if (state.game_over[id]) {
-                        return; // Don't render snakes that are game over
-                    }
-
-                    let interpolatedSegments = segments;
-                    if (prevGameState && prevGameState.players[id]) {
-                        interpolatedSegments = segments.map((segment, i) => {
-                            const prevSegment = prevGameState.players[id][i] || segment;
-                            return [
-                                lerp(prevSegment[0], segment[0], interpolation),
-                                lerp(prevSegment[1], segment[1], interpolation)
-                            ];
-                        });
-                    }
-
-                    // Draw snake body (excluding head)
-                    ctx.strokeStyle = colors.snakeOutline;
-                    ctx.fillStyle = colors.snake;
-                    ctx.lineWidth = Math.max(1, cellSize - 4);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-
-                    if (interpolatedSegments.length > 1) {
-                        ctx.beginPath();
-                        // Start from second segment
-                        const firstBodySegment = interpolatedSegments[1];
-                        const px = firstBodySegment[0] * cellSize + cellSize/2;
-                        const py = firstBodySegment[1] * cellSize + cellSize/2;
-                        ctx.moveTo(px, py);
-                        
-                        // Draw rest of body
-                        for (let i = 2; i < interpolatedSegments.length; i++) {
-                            const segment = interpolatedSegments[i];
-                            const px = segment[0] * cellSize + cellSize/2;
-                            const py = segment[1] * cellSize + cellSize/2;
-                            ctx.lineTo(px, py);
-                        }
-                        ctx.stroke();
-                    }
-
-                    // Draw head separately
-                    const head = interpolatedSegments[0];
-                    const px = head[0] * cellSize + cellSize/2;
-                    const py = head[1] * cellSize + cellSize/2;
-
-                    // Connect head to first body segment
-                    if (interpolatedSegments.length > 1) {
-                        ctx.beginPath();
-                        ctx.moveTo(px, py);
-                        const firstBody = interpolatedSegments[1];
-                        const firstBodyPx = firstBody[0] * cellSize + cellSize/2;
-                        const firstBodyPy = firstBody[1] * cellSize + cellSize/2;
-                        ctx.lineTo(firstBodyPx, firstBodyPy);
-                        ctx.stroke();
-                    }
-
-                    // Draw head circle
-                    ctx.fillStyle = colors.snake;
-                    ctx.strokeStyle = colors.snakeOutline;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(px, py, cellSize/2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Add eyes
-                    ctx.fillStyle = '#000';
-                    const eyeOffset = cellSize/5;
-                    const eyeSize = cellSize/8;
-                    ctx.beginPath();
-                    ctx.arc(px - eyeOffset, py - eyeOffset, eyeSize, 0, Math.PI * 2);
-                    ctx.arc(px + eyeOffset, py - eyeOffset, eyeSize, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            };
-
-            // Add linear interpolation helper
-            const lerp = (start, end, t) => {
-                return start * (1 - t) + end * t;
-            };
-
-            const moveSnake = () => {
-                if (ws && direction) {
-                    ws.send(JSON.stringify({ direction }));
-                }
-            };
-
-            useEffect(() => {
-                if (direction) {
-                    if (moveIntervalRef.current) {
-                        clearInterval(moveIntervalRef.current);
-                    }
-                    moveIntervalRef.current = setInterval(moveSnake, 100); // Faster movement
-                }
-
-                return () => {
-                    if (moveIntervalRef.current) {
-                        clearInterval(moveIntervalRef.current);
-                    }
-                };
-            }, [direction]);
-
-            const handleKeyDown = (event) => {
-                const newDirection = {
-                    'ArrowUp': 'up',
-                    'ArrowDown': 'down',
-                    'ArrowLeft': 'left',
-                    'ArrowRight': 'right'
-                }[event.key];
-
-                if (newDirection) {
-                    // Prevent 180-degree turns
-                    const opposites = {
-                        'up': 'down',
-                        'down': 'up',
-                        'left': 'right',
-                        'right': 'left'
-                    };
-                    
-                    if (opposites[newDirection] !== direction) {
-                        setDirection(newDirection);
-                    }
-                }
-            };
-
-            useEffect(() => {
-                window.addEventListener('keydown', handleKeyDown);
-                return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [direction]);
-
-            return (
-                <React.Fragment>
-                    {showNameInput ? (
-                        <div className="player-name-modal">
-                            <form className="player-name-form" onSubmit={handleNameSubmit}>
-                                <h2>Enter Your Name</h2>
-                                <input
-                                    type="text"
-                                    value={playerName}
-                                    onChange={(e) => setPlayerName(e.target.value)}
-                                    placeholder="Your name"
-                                    required
-                                    maxLength={20}
-                                    autoFocus
-                                />
-                                <br />
-                                <button type="submit">Start Game</button>
-                            </form>
-                        </div>
-                    ) : (
-                        <div className="game-container">
-                            <h1>Snake Game</h1>
-                            {gameState ? (
-                                <React.Fragment>
-                                    <div className="score">Score: {score}</div>
-                                    <div className="high-scores">
-                                        <h3>Top Scores</h3>
-                                        <ol>
-                                            {topScores.map((score, index) => (
-                                                <li key={index}>
-                                                    {score.player_name}: {score.score} 
-                                                    <small style={{color: '#8ab4f8', marginLeft: '8px'}}>
-                                                        {new Date(score.date).toLocaleDateString()}
-                                                    </small>
-                                                </li>
-                                            ))}
-                                        </ol>
-                                    </div>
-                                    <canvas 
-                                        ref={canvasRef} 
-                                        width={720}
-                                        height={400}
-                                    />
-                                    <div className="controls">
-                                        <p>Use arrow keys to control the snake</p>
-                                    </div>
-                                    {gameOver && (
-                                        <div className="game-over">
-                                            <h2>Game Over!</h2>
-                                            <p>Final Score: {score}</p>
-                                            {isHighScore && (
-                                                <p>Congratulations! You made it to the top 10!</p>
-                                            )}
-                                            <button onClick={restartGame}>Play Again</button>
-                                        </div>
-                                    )}
-                                </React.Fragment>
-                            ) : (
-                                <p>Connecting to game server...</p>
-                            )}
-                        </div>
-                    )}
-                </React.Fragment>
-            );
+    <div id="score">Score: 0</div>
+    <div id="game-container"></div>
+    <script>
+    // Wait for both window and PIXI to be loaded
+    window.onload = function() {
+        if (typeof PIXI === 'undefined') {
+            console.error('PIXI.js not loaded! Please check your internet connection.');
+            return;
         }
 
-        ReactDOM.render(<SnakeGame />, document.getElementById('root'));
+        // --- PIXI.js Snake Game ---
+        const CELL_SIZE = 20;
+        const COLS = 36;
+        const ROWS = 20;
+        const WIDTH = COLS * CELL_SIZE;
+        const HEIGHT = ROWS * CELL_SIZE;
+        const MOVE_INTERVAL = 100; // ms
+
+        let direction = 'RIGHT';
+        let nextDirection = 'RIGHT';
+        let snake = [{ x: 5, y: Math.floor(ROWS/2) }];
+        let food = { x: 15, y: 15 };
+        let score = 0;
+        let moveTimer = 0;
+        let gameOver = false;
+
+        // Create PIXI application first
+        const app = new PIXI.Application({
+            width: WIDTH,
+            height: HEIGHT,
+            backgroundColor: 0x000000,
+            antialias: true
+        });
+
+        // Create containers
+        const snakeContainer = new PIXI.Container();
+        const foodContainer = new PIXI.Container();
+
+        // Initialize PIXI stage - make sure DOM is ready
+        function initializeGame() {
+            const gameContainer = document.getElementById('game-container');
+            if (!gameContainer) {
+                console.error('Game container not found!');
+                return;
+            }
+
+            try {
+                gameContainer.appendChild(app.view);
+                app.stage.addChild(snakeContainer);
+                app.stage.addChild(foodContainer);
+                
+                // Set up game loop
+                app.ticker.add((delta) => {
+                    if (gameOver) return;
+                    drawSnake();
+                    drawFood();
+                });
+                
+                drawSnake();
+                drawFood();
+            } catch (error) {
+                console.error('Error initializing game:', error);
+            }
+        }
+
+        // Draw food
+        function drawFood() {
+            foodContainer.removeChildren();
+            const g = new PIXI.Graphics();
+            g.beginFill(0xff4444);
+            g.drawRect(food.x * CELL_SIZE, food.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            g.endFill();
+            foodContainer.addChild(g);
+        }
+
+        // Draw snake
+        function drawSnake() {
+            snakeContainer.removeChildren();
+            snake.forEach((segment, idx) => {
+                const g = new PIXI.Graphics();
+                // Add border
+                g.lineStyle(1, 0x66ff66);
+                g.beginFill(idx === 0 ? 0x44ff44 : 0x228822);
+                g.drawRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                g.endFill();
+                snakeContainer.addChild(g);
+            });
+        }
+
+        // WebSocket Setup
+        const playerId = Math.random().toString(36).substring(7);
+        const ws = new WebSocket(`ws://localhost:8000/ws/${playerId}`);
+        
+        // Send initial player info
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                player_name: `Player_${playerId}`
+            }));
+        };
+
+        // Handle server messages
+        ws.onmessage = (event) => {
+            const gameState = JSON.parse(event.data);
+            
+            // Update game state
+            if (gameState.game_over && gameState.game_over[playerId]) {
+                gameOver = true;
+                if (gameState.is_top_10) {
+                    showGameOver(true);
+                } else {
+                    showGameOver(false);
+                }
+            }
+            
+            // Update score
+            if (gameState.scores && gameState.scores[playerId] !== undefined) {
+                score = gameState.scores[playerId];
+                document.getElementById('score').textContent = 'Score: ' + score;
+            }
+            
+            // Update food position if it changed
+            if (gameState.food && (gameState.food[0] !== food.x || gameState.food[1] !== food.y)) {
+                food = { x: gameState.food[0], y: gameState.food[1] };
+                drawFood();
+            }
+            
+            // Update snake position
+            if (gameState.players && gameState.players[playerId]) {
+                snake = gameState.players[playerId].map(pos => ({ x: pos[0], y: pos[1] }));
+                drawSnake();
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket connection closed');
+            showGameOver(false, 'Connection lost!');
+        };
+
+        // Place food not on snake
+        function placeFood() {
+            let newFood;
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * COLS),
+                    y: Math.floor(Math.random() * ROWS)
+                };
+            } while (snake.some(seg => seg.x === newFood.x && seg.y === newFood.y));
+            food = newFood;
+            drawFood();
+        }
+
+        // Handle keyboard
+        window.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            
+            e.preventDefault(); // Prevent default scroll behavior
+            
+            let newDirection;
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    newDirection = 'up';
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    newDirection = 'down';
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    newDirection = 'left';
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    newDirection = 'right';
+                    break;
+                default:
+                    return;
+            }
+            
+            // Send direction to server
+            if (ws.readyState === WebSocket.OPEN) {
+                direction = newDirection; // Update local direction
+                ws.send(JSON.stringify({ direction: newDirection }));
+            }
+        });
+
+        function showGameOver(isTopScore = false, message = 'Game Over!') {
+            const style = new PIXI.TextStyle({
+                fill: '#ff4444',
+                fontSize: 48,
+                fontWeight: 'bold',
+                stroke: '#000',
+                strokeThickness: 6
+            });
+            
+            const text = new PIXI.Text(
+                isTopScore ? 'New High Score!\n' + message : message,
+                style
+            );
+            text.anchor.set(0.5);
+            text.x = WIDTH / 2;
+            text.y = HEIGHT / 2;
+            app.stage.addChild(text);
+        }
+
+        // Initialize the game after everything is defined
+        initializeGame();
+    };
     </script>
 </body>
 </html>
