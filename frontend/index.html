@@ -8,27 +8,8 @@
     <meta http-equiv="Expires" content="0">
     <title>Snake Game (Pixi.js)</title>
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAGKSURBVFiF7ZY9TsNAEIXfbCASSByAngIJxAHouAEFokcchYYT0NJwGgoOQEXHEWg4AB01EgmJn2F3aYzjxF57bYSUfJJlz+6bmTf27HoBYmRZ1vcwMrNHM7tJkmQ3iiIys0zOzMySJNlV1d0wDJ/DCDAY/BTgQlVfwjB8MLMHd38vr5nZg6q+AFcAhTrPBCimYGZPIQCxqu4DOBWRKxEZALgDsFDVg8JnEJF7VS0D5mkjsACwZYzhOI6nABaqegigAOzEcTwlY2wZeO7lfQATEUFd65hzU9XJ/y0wM8/1uypwAkDOuSERfQEYE9GFiHwQUUpEsYhMAZwT0SeAgXPuO8uyfl7WOVdW/AVAS2U9IroUkTcAmZkdisg7gGsRmQF4BXBsZqOqirMsy0umUez2EsDCzB5VNSr+lG3wIKJJEASjIAhOAZwBGAPYIyJqQld5EO0BbDcRWHsT1rXgT0uwyfhvC9QR2ASbNhH9KVB3Cv5GYOnN1kSgjsDKm00p9dcF1jYFG7XgtztxFf5+DP8ARTunmljwrRAAAAAASUVORK5CYII=">
-    <!-- <script src="pixi.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
     <style>
-        #console-toolbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            z-index: 10000;
-            background: #222;
-            color: #eee;
-            font-family: monospace;
-            font-size: 14px;
-            padding: 8px 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            max-height: 120px;
-            overflow-y: auto;
-        }
-        body {
-            padding-top: 130px;
-        }
         body {
             margin: 0;
             padding: 0;
@@ -63,37 +44,10 @@
     </style>
 </head>
 <body>
-    <div id="console-toolbar"></div>
     <div id="score">Score: 0</div>
     <div id="game-container"></div>
     <script>
     window.onload = function() {
-        // --- Custom Console Toolbar ---
-        const toolbar = document.getElementById('console-toolbar');
-        function addLogToToolbar(type, ...args) {
-            const msg = args.map(a => {
-                if (typeof a === 'object' && a !== null) {
-                    try {
-                        return JSON.stringify(a, null, 2);
-                    } catch {
-                        return `[Object: ${a.constructor && a.constructor.name}]`;
-                    }
-                }
-                return a;
-            }).join(' ');
-            const entry = document.createElement('div');
-            entry.textContent = `[${type}] ${msg}`;
-            entry.style.color = type === 'error' ? '#ff4444' : (type === 'warn' ? '#ffcc00' : '#eee');
-            toolbar.appendChild(entry);
-            toolbar.scrollTop = toolbar.scrollHeight;
-        }
-        const origLog = console.log;
-        const origWarn = console.warn;
-        const origError = console.error;
-        console.log = (...args) => { origLog(...args); addLogToToolbar('log', ...args); };
-        console.warn = (...args) => { origWarn(...args); addLogToToolbar('warn', ...args); };
-        console.error = (...args) => { origError(...args); addLogToToolbar('error', ...args); };
-
         // --- Phaser Snake Game ---
         const CELL_SIZE = 20;
         const COLS = 36;
@@ -107,6 +61,8 @@
         let gameOver = false;
         let playerId = Math.random().toString(36).substring(7);
         let ws;
+        let currentDirection = 'right'; // Default initial direction
+        let moveIntervalId = null;
 
         // Phaser config
         const config = {
@@ -181,21 +137,34 @@
                 case 'D': newDirection = 'right'; break;
                 default: return;
             }
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ direction: newDirection }));
+            // Only update direction if it's not directly opposite
+            if ((currentDirection === 'up' && newDirection === 'down') ||
+                (currentDirection === 'down' && newDirection === 'up') ||
+                (currentDirection === 'left' && newDirection === 'right') ||
+                (currentDirection === 'right' && newDirection === 'left')) {
+                return;
             }
+            currentDirection = newDirection;
         }
 
         function setupWebSocket(scene) {
             ws = new WebSocket(`ws://localhost:8000/ws/${playerId}`);
             ws.onopen = () => {
                 ws.send(JSON.stringify({ player_name: `Player_${playerId}` }));
+                // Start sending direction at intervals when connected
+                if (moveIntervalId) clearInterval(moveIntervalId);
+                moveIntervalId = setInterval(() => {
+                    if (!gameOver && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ direction: currentDirection }));
+                    }
+                }, 100); // Send direction every 100ms
             };
             ws.onmessage = (event) => {
                 const gameState = JSON.parse(event.data);
                 if (gameState.game_over && gameState.game_over[playerId]) {
                     gameOver = true;
                     showGameOver(scene, gameState.is_top_10);
+                    if (moveIntervalId) clearInterval(moveIntervalId);
                 }
                 if (gameState.scores && gameState.scores[playerId] !== undefined) {
                     score = gameState.scores[playerId];
@@ -211,10 +180,10 @@
                     drawSnake(scene);
                 }
             };
-            ws.onerror = (error) => { console.error('WebSocket error:', error); };
+            ws.onerror = (error) => { /* Optionally log error */ };
             ws.onclose = () => {
-                console.log('WebSocket connection closed');
                 showGameOver(scene, false, 'Connection lost!');
+                if (moveIntervalId) clearInterval(moveIntervalId);
             };
         }
 
