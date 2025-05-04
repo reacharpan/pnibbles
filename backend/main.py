@@ -1,3 +1,4 @@
+__version__ = '1.0.0'  # Backend and frontend are both versioned as v1.0.0
 import os # Add this import
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse # Add FileResponse
@@ -31,6 +32,9 @@ index_html_path = os.path.join(frontend_dir, "index.html")
 
 # Game state
 class SnakeGame:
+    """
+    Manages the state of the multiplayer Snake game, including players, scores, food, and game logic.
+    """
     def __init__(self):
         self.board_size = (36, 20)  # 16:9 ratio with height of 20 cells
         self.players = {}

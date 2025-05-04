@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'pnibbles'
+version = '1.0.0'
+release = '1.0.0'
 copyright = '2025, Arpan Shah'
 author = 'Arpan Shah'
 release = '2025'
